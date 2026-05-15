@@ -2,111 +2,169 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>이미지 일괄 변환기 - 배너 버전</title>
+    <title>이미지 일괄 변환기 - 텍스트 X (파일명 완전 최적화)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Malgun Gothic', sans-serif; background: #1a1a1a; color: #fff; overflow: hidden; }
-        #drop-zone { 
-            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            border: 4px dashed #333; margin: 30px; border-radius: 30px; cursor: pointer; 
-            transition: all 0.3s;
-        }
-        #drop-zone:hover { border-color: #2ecc71; background: #222; }
-        #drop-zone.hover { border-color: #2ecc71; background: #252525; transform: scale(1.005); }
-        .plus-icon { font-size: 50px; margin-bottom: 15px; color: #444; }
-        .main-text { font-size: 2em; font-weight: bold; color: #2ecc71; text-shadow: 0 0 15px rgba(46, 204, 113, 0.3); }
-        .sub-text { margin-top: 15px; color: #888; font-size: 1.1em; }
-        #status { text-align: center; padding: 20px; font-weight: bold; color: #2ecc71; font-size: 1.2em; min-height: 1.2em; }
+        .affiliate-header { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 20px; background: #111; border-bottom: 2px solid #333; }
+        .aff-box { display: flex; flex-direction: column; gap: 8px; }
+        .aff-drop { height: 120px; border: 2px dashed #444; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #222; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; }
+        .aff-drop:hover { border-color: #2ecc71; background: #282828; }
+        .aff-drop img { width: 100%; height: 100%; object-fit: contain; }
+        .aff-label { font-size: 0.9em; font-weight: bold; color: #2ecc71; text-align: center; }
+        .plus-small { font-size: 24px; color: #444; }
+        #bulk-drop { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px dashed #333; margin: 20px; border-radius: 20px; cursor: pointer; transition: all 0.3s; }
+        #bulk-drop:hover { border-color: #2ecc71; background: #222; }
+        .main-text { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-top: 10px; }
+        .sub-text { margin-top: 10px; color: #888; font-size: 1.1em; text-align: center; line-height: 1.6; }
+        .highlight { color: #2ecc71; font-weight: bold; }
+        #status { text-align: center; padding: 10px; font-weight: bold; color: #2ecc71; min-height: 1.5em; }
+        #result-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding: 0 20px 20px; overflow-y: auto; max-height: 20vh; }
+        .preview-item { background: #222; padding: 8px; border-radius: 8px; font-size: 0.7em; text-align: center; border: 1px solid #333; }
+        .preview-item img { width: 100%; border-radius: 4px; margin-bottom: 5px; }
+        .btn-container { padding: 15px; text-align: center; background: #111; }
+        .action-btn { background: #2ecc71; color: #000; border: none; padding: 12px 50px; font-size: 1.1em; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; }
+        .action-btn:hover { transform: scale(1.03); background: #27ae60; }
         canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <div id="drop-zone">
-        <div class="plus-icon">+</div>
-        <div class="main-text">텍스트 없는 배너 버전</div>
-        <div class="sub-text">PNG/JPG 자동 분류 추출</div>
+    <div class="affiliate-header">
+        <div class="aff-box"><div class="aff-label">n_MO메인 (208x208)</div><div class="aff-drop" onclick="triggerInput('main')" id="drop-main"><span class="plus-small">+</span></div></div>
+        <div class="aff-box"><div class="aff-label">n_MO썸네일1 (218x146)</div><div class="aff-drop" onclick="triggerInput('thumb1')" id="drop-thumb1"><span class="plus-small">+</span></div></div>
+        <div class="aff-box"><div class="aff-label">n_MO썸네일2 (218x146)</div><div class="aff-drop" onclick="triggerInput('thumb2')" id="drop-thumb2"><span class="plus-small">+</span></div></div>
     </div>
-    
+
+    <div id="bulk-drop">
+        <div class="plus-small" style="font-size: 50px;">+</div>
+        <div class="main-text">통합 배너 버전</div>
+        <div class="sub-text">
+            <span class="highlight">1000/1200 원본 드롭 시 자동 분류 추출</span><br>
+            원본 이름 없이 지정된 명칭으로만 일괄 저장됩니다.
+        </div>
+    </div>
+
     <div id="status"></div>
-    <input type="file" id="file-input" accept="image/*" style="display: none;">
+    <div id="result-container"></div>
+    <div class="btn-container"><button class="action-btn" onclick="processAll()">모든 파일 통합 패키지 추출</button></div>
+
+    <input type="file" id="bulk-input" multiple style="display:none">
+    <input type="file" id="input-main" style="display:none"><input type="file" id="input-thumb1" style="display:none"><input type="file" id="input-thumb2" style="display:none">
     <canvas id="canvas"></canvas>
 
 <script>
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    const status = document.getElementById('status');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    let bulkFiles = [];
+    const affiliateImages = { main: null, thumb1: null, thumb2: null };
 
-    const targetSpecs = [
-        { w: 1000, h: 1000, name: '1000_x', type: 'image/jpeg' },
-        { w: 1200, h: 750,  name: '1200_x', type: 'image/jpeg' },
-        { w: 650,  h: 400,  name: 'y_rolling_banner', type: 'image/jpeg' },
-        { w: 720,  h: 360,  name: 'cardview', type: 'image/jpeg' },
-        { w: 1080, h: 720,  name: 'c_rolling_banner_x', type: 'image/jpeg' },
-        { w: 900,  h: 600,  name: 'kk_banner', type: 'image/jpeg' },
-        { w: 500,  h: 500,  name: 'e_PC배너', type: 'image/png' },
-        { w: 640,  h: 278,  name: 'e_모바일배너', type: 'image/png' },
-        { w: 1920, h: 1152, name: 'k_rolling_banner', type: 'image/jpeg' }
-    ];
+    function triggerInput(id) { document.getElementById(`input-${id}`).click(); }
 
-    dropZone.onclick = () => fileInput.click();
-    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('hover'); };
-    dropZone.ondragleave = () => dropZone.classList.remove('hover');
-    dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('hover'); handleFile(e.dataTransfer.files[0]); };
-    fileInput.onchange = (e) => handleFile(e.target.files[0]);
+    ['main', 'thumb1', 'thumb2'].forEach(id => {
+        const input = document.getElementById(`input-${id}`);
+        const drop = document.getElementById(`drop-${id}`);
+        input.onchange = (e) => handleAffiliateFile(e.target.files[0], id);
+        drop.ondragover = (e) => { e.preventDefault(); drop.style.borderColor = '#2ecc71'; };
+        drop.ondragleave = () => { drop.style.borderColor = '#444'; };
+        drop.ondrop = (e) => { e.preventDefault(); drop.style.borderColor = '#444'; handleAffiliateFile(e.dataTransfer.files[0], id); };
+    });
 
-    async function handleFile(file) {
+    async function handleAffiliateFile(file, id) {
         if (!file || !file.type.startsWith('image/')) return;
+        affiliateImages[id] = await loadImage(file);
+        document.getElementById(`drop-${id}`).innerHTML = `<img src="${URL.createObjectURL(file)}">`;
+    }
 
-        status.innerText = "⚡ 9개 규격 일괄 생성 중...";
+    const bulkDrop = document.getElementById('bulk-drop');
+    const bulkInput = document.getElementById('bulk-input');
+    bulkDrop.onclick = () => bulkInput.click();
+    bulkDrop.ondragover = (e) => { e.preventDefault(); bulkDrop.style.borderColor = '#2ecc71'; };
+    bulkDrop.ondragleave = () => { bulkDrop.style.borderColor = '#333'; };
+    bulkDrop.ondrop = (e) => { e.preventDefault(); bulkDrop.style.borderColor = '#333'; addBulkFiles(e.dataTransfer.files); };
+    bulkInput.onchange = (e) => addBulkFiles(e.target.files);
+
+    function addBulkFiles(files) {
+        for (let f of files) { if(f.type.startsWith('image/')) bulkFiles.push(f); }
+        document.getElementById('status').innerText = `현재 일반 배너 ${bulkFiles.length}개 대기 중...`;
+    }
+
+    async function processAll() {
+        if (bulkFiles.length === 0 && !affiliateImages.main) { alert("이미지를 등록해주세요!"); return; }
+        document.getElementById('status').innerText = "⚡ 파일명 완전 최적화 중...";
         const zip = new JSZip();
-        const originalName = file.name.substring(0, file.name.lastIndexOf('.'));
+        document.getElementById('result-container').innerHTML = "";
 
-        for (const spec of targetSpecs) {
-            canvas.width = spec.w;
-            canvas.height = spec.h;
-            
-            const blob = await processImageFill(file, spec.w, spec.h, spec.type);
-            const ext = spec.type === 'image/png' ? 'png' : 'jpg';
-            const fileName = `${spec.name}.${ext}`;
-            zip.file(fileName, blob);
+        // 가맹점
+        if (affiliateImages.main) zip.file("n_MO메인.jpg", await renderImage(affiliateImages.main, 208, 208, 'image/jpeg'));
+        if (affiliateImages.thumb1) zip.file("n_MO썸네일1.jpg", await renderImage(affiliateImages.thumb1, 218, 146, 'image/jpeg'));
+        if (affiliateImages.thumb2) zip.file("n_MO썸네일2.jpg", await renderImage(affiliateImages.thumb2, 218, 146, 'image/jpeg'));
+
+        // 일반 배너 (원본 이름 제거 로직 적용)
+        const specs = {
+            square: [
+                { w: 1000, h: 1000, name: '1000_x', type: 'image/jpeg' },
+                { w: 500,  h: 500,  name: 'e_PC배너', type: 'image/png' }
+            ],
+            wide: [
+                { w: 1200, h: 750,  name: '1200_x', type: 'image/jpeg' },
+                { w: 650,  h: 400,  name: 'y_rolling_banner', type: 'image/jpeg' },
+                { w: 720,  h: 360,  name: 'cardview', type: 'image/jpeg' },
+                { w: 1080, h: 720,  name: 'c_rolling_banner_x', type: 'image/jpeg' },
+                { w: 900,  h: 600,  name: 'kk_banner', type: 'image/jpeg' },
+                { w: 640,  h: 278,  name: 'e_모바일배너', type: 'image/png' },
+                { w: 1920, h: 1152, name: 'k_rolling_banner', type: 'image/jpeg' }
+            ]
+        };
+
+        for (const file of bulkFiles) {
+            const img = await loadImage(file);
+            const ratio = img.width / img.height;
+            const targetSet = ratio > 1.1 ? specs.wide : specs.square;
+
+            for (const spec of targetSet) {
+                const blob = await renderImage(img, spec.w, spec.h, spec.type);
+                // 중요: originalName을 제거하고 spec.name으로만 파일명 생성
+                const fName = `${spec.name}.${spec.type === 'image/png' ? 'png' : 'jpg'}`;
+                zip.file(fName, blob);
+                addPreview(blob, fName);
+            }
         }
 
         const content = await zip.generateAsync({type: "blob"});
-        const zipLink = document.createElement('a');
-        zipLink.href = URL.createObjectURL(content);
-        zipLink.download = `${originalName}_banners.zip`;
-        zipLink.click();
-
-        status.innerText = "✅ 모든 규격 추출 완료!";
-        setTimeout(() => { status.innerText = ""; }, 3000);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `통합_배너_완전최종.zip`;
+        link.click();
+        document.getElementById('status').innerText = "✅ 원본 이름 없이 명칭으로만 추출 완료!";
+        bulkFiles = []; 
     }
 
-    function processImageFill(file, targetW, targetH, mimeType) {
+    function addPreview(blob, name) {
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.innerHTML = `<img src="${URL.createObjectURL(blob)}"><br>${name}`;
+        document.getElementById('result-container').appendChild(div);
+    }
+
+    function loadImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    ctx.clearRect(0, 0, targetW, targetH);
-                    if (mimeType === 'image/jpeg') {
-                        ctx.fillStyle = "white";
-                        ctx.fillRect(0, 0, targetW, targetH);
-                    }
-                    let scale = Math.max(targetW / img.width, targetH / img.height);
-                    let w = img.width * scale;
-                    let h = img.height * scale;
-                    let x = (targetW - w) / 2;
-                    let y = (targetH - h) / 2;
-                    ctx.drawImage(img, x, y, w, h);
-                    const quality = mimeType === 'image/jpeg' ? 0.8 : 1.0;
-                    canvas.toBlob((blob) => resolve(blob), mimeType, quality);
-                };
-                img.src = e.target.result;
-            };
+            reader.onload = (e) => { const img = new Image(); img.onload = () => resolve(img); img.src = e.target.result; };
             reader.readAsDataURL(file);
+        });
+    }
+
+    function renderImage(img, targetW, targetH, mimeType) {
+        return new Promise((resolve) => {
+            canvas.width = targetW; canvas.height = targetH;
+            ctx.clearRect(0, 0, targetW, targetH);
+            if (mimeType === 'image/jpeg') { ctx.fillStyle = "white"; ctx.fillRect(0, 0, targetW, targetH); }
+            let scale = Math.max(targetW / img.width, targetH / img.height);
+            let w = img.width * scale; let h = img.height * scale;
+            let x = (targetW - w) / 2; let y = (targetH - h) / 2;
+            ctx.drawImage(img, x, y, w, h);
+            canvas.toBlob((blob) => resolve(blob), mimeType, 0.9);
         });
     }
 </script>
