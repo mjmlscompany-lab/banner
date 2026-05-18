@@ -2,29 +2,40 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>텍스트 X (파일명 완전 최적화)</title>
+    <title>통합 배너 프로그램 (ALL-IN-ONE 파일명 최종 교정본)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Malgun Gothic', sans-serif; background: #1a1a1a; color: #fff; overflow: hidden; }
-        .affiliate-header { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 20px; background: #111; border-bottom: 2px solid #333; }
+        
+        /* 1. 상단 가맹점 헤더 영역 */
+        .affiliate-header { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 20px 20px 10px 20px; background: #111; border-bottom: 2px solid #333; }
         .aff-box { display: flex; flex-direction: column; gap: 8px; }
-        .aff-drop { height: 120px; border: 2px dashed #444; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #222; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; }
+        .aff-drop { height: 110px; border: 2px dashed #444; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #222; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; }
         .aff-drop:hover { border-color: #2ecc71; background: #282828; }
         .aff-drop img { width: 100%; height: 100%; object-fit: contain; }
         .aff-label { font-size: 0.9em; font-weight: bold; color: #2ecc71; text-align: center; }
         .plus-small { font-size: 24px; color: #444; }
-        #bulk-drop { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px dashed #333; margin: 20px; border-radius: 20px; cursor: pointer; transition: all 0.3s; }
-        #bulk-drop:hover { border-color: #2ecc71; background: #222; }
-        .main-text { font-size: 1.8em; font-weight: bold; color: #2ecc71; margin-top: 10px; }
-        .sub-text { margin-top: 10px; color: #888; font-size: 1.1em; text-align: center; line-height: 1.6; }
+
+        /* 2. 중앙 메인 드롭존 (X / O 병렬 배치) */
+        .dropzone-container { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 15px 20px; overflow: hidden; }
+        .bulk-drop-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px dashed #333; border-radius: 20px; cursor: pointer; transition: all 0.3s; background: #1f1f1f; padding: 20px; text-align: center; }
+        .bulk-drop-box:hover { border-color: #2ecc71; background: #252525; }
+        
+        .main-text { font-size: 1.6em; font-weight: bold; color: #2ecc71; margin-top: 10px; }
+        .sub-text { margin-top: 10px; color: #888; font-size: 1em; line-height: 1.6; }
         .highlight { color: #2ecc71; font-weight: bold; }
-        #status { text-align: center; padding: 10px; font-weight: bold; color: #2ecc71; min-height: 1.5em; }
-        #result-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding: 0 20px 20px; overflow-y: auto; max-height: 20vh; }
-        .preview-item { background: #222; padding: 8px; border-radius: 8px; font-size: 0.7em; text-align: center; border: 1px solid #333; }
+        
+        /* 3. 하단 상태 및 결과창 */
+        #status { text-align: center; padding: 8px; font-weight: bold; color: #2ecc71; min-height: 1.2em; font-size: 0.95em; }
+        #result-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 0 20px 10px; overflow-y: auto; max-height: 22vh; background: #151515; border-top: 1px solid #222; }
+        .preview-item { background: #222; padding: 6px; border-radius: 8px; font-size: 0.7em; text-align: center; border: 1px solid #333; }
         .preview-item img { width: 100%; border-radius: 4px; margin-bottom: 5px; }
-        .btn-container { padding: 15px; text-align: center; background: #111; }
-        .action-btn { background: #2ecc71; color: #000; border: none; padding: 12px 50px; font-size: 1.1em; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; }
+        
+        /* 4. 최하단 고정 버튼 */
+        .btn-container { padding: 15px; text-align: center; background: #111; border-top: 1px solid #222; }
+        .action-btn { background: #2ecc71; color: #000; border: none; padding: 12px 60px; font-size: 1.1em; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; }
         .action-btn:hover { transform: scale(1.03); background: #27ae60; }
+        
         canvas { display: none; }
     </style>
 </head>
@@ -36,31 +47,47 @@
         <div class="aff-box"><div class="aff-label">n_MO썸네일2 (218x146)</div><div class="aff-drop" onclick="triggerInput('thumb2')" id="drop-thumb2"><span class="plus-small">+</span></div></div>
     </div>
 
-    <div id="bulk-drop">
-        <div class="plus-small" style="font-size: 50px;">+</div>
-        <div class="main-text">통합 배너 버전</div>
-        <div class="sub-text">
-            <span class="highlight">1000/1200 원본 드롭 시 자동 분류 추출</span><br>
-            원본 이름 없이 지정된 명칭으로만 일괄 저장됩니다.
+    <div class="dropzone-container">
+        <div id="drop-zone-x" class="bulk-drop-box">
+            <div class="plus-small" style="font-size: 40px;">+</div>
+            <div class="main-text">통합 배너 [텍스트 X]</div>
+            <div class="sub-text">
+                <span class="highlight">1000/1200 원본 드롭 (총 9종 규격 추출)</span><br>
+                1000_x, e_PC, 1200_x, y_rolling, cardview, c_rolling, kk_banner, e_모바일, k_rolling
+            </div>
+        </div>
+
+        <div id="drop-zone-o" class="bulk-drop-box">
+            <div class="plus-small" style="font-size: 40px; color: #3498db;">+</div>
+            <div class="main-text" style="color: #3498db;">텍스트 O 버전</div>
+            <div class="sub-text">
+                <span class="highlight" style="color: #3498db;">1000/1200 이미지를 한꺼번에 드롭하세요!</span><br>
+                1200, c_rolling_banner / 1000, y_thumbnail_banner 추출 (_x 없음)
+            </div>
         </div>
     </div>
 
-    <div id="status"></div>
+    <div id="status">각 드롭존에 이미지 파일을 대기시켜 주세요.</div>
     <div id="result-container"></div>
+    
     <div class="btn-container"><button class="action-btn" onclick="processAll()">모든 파일 통합 패키지 추출</button></div>
 
-    <input type="file" id="bulk-input" multiple style="display:none">
     <input type="file" id="input-main" style="display:none"><input type="file" id="input-thumb1" style="display:none"><input type="file" id="input-thumb2" style="display:none">
+    <input type="file" id="input-bulk-x" multiple style="display:none">
+    <input type="file" id="input-bulk-o" multiple style="display:none">
     <canvas id="canvas"></canvas>
 
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    let bulkFiles = [];
+    
+    // 파일 데이터 저장소 분리
+    let xFiles = [];
+    let oFiles = [];
     const affiliateImages = { main: null, thumb1: null, thumb2: null };
 
+    // 가맹점 파일 바인딩 로직
     function triggerInput(id) { document.getElementById(`input-${id}`).click(); }
-
     ['main', 'thumb1', 'thumb2'].forEach(id => {
         const input = document.getElementById(`input-${id}`);
         const drop = document.getElementById(`drop-${id}`);
@@ -76,32 +103,56 @@
         document.getElementById(`drop-${id}`).innerHTML = `<img src="${URL.createObjectURL(file)}">`;
     }
 
-    const bulkDrop = document.getElementById('bulk-drop');
-    const bulkInput = document.getElementById('bulk-input');
-    bulkDrop.onclick = () => bulkInput.click();
-    bulkDrop.ondragover = (e) => { e.preventDefault(); bulkDrop.style.borderColor = '#2ecc71'; };
-    bulkDrop.ondragleave = () => { bulkDrop.style.borderColor = '#333'; };
-    bulkDrop.ondrop = (e) => { e.preventDefault(); bulkDrop.style.borderColor = '#333'; addBulkFiles(e.dataTransfer.files); };
-    bulkInput.onchange = (e) => addBulkFiles(e.target.files);
+    // [텍스트 X] 드롭존 설정
+    const dropX = document.getElementById('drop-zone-x');
+    const inputX = document.getElementById('input-bulk-x');
+    dropX.onclick = () => inputX.click();
+    dropX.ondragover = (e) => { e.preventDefault(); dropX.style.borderColor = '#2ecc71'; };
+    dropX.ondragleave = () => { dropX.style.borderColor = '#333'; };
+    dropX.ondrop = (e) => { e.preventDefault(); dropX.style.borderColor = '#333'; addFiles(e.dataTransfer.files, 'X'); };
+    inputX.onchange = (e) => addFiles(e.target.files, 'X');
 
-    function addBulkFiles(files) {
-        for (let f of files) { if(f.type.startsWith('image/')) bulkFiles.push(f); }
-        document.getElementById('status').innerText = `현재 일반 배너 ${bulkFiles.length}개 대기 중...`;
+    // [텍스트 O] 드롭존 설정
+    const dropO = document.getElementById('drop-zone-o');
+    const inputO = document.getElementById('input-bulk-o');
+    dropO.onclick = () => inputO.click();
+    dropO.ondragover = (e) => { e.preventDefault(); dropO.style.borderColor = '#3498db'; };
+    dropO.ondragleave = () => { dropO.style.borderColor = '#333'; };
+    dropO.ondrop = (e) => { e.preventDefault(); dropO.style.borderColor = '#333'; addFiles(e.dataTransfer.files, 'O'); };
+    inputO.onchange = (e) => addFiles(e.target.files, 'O');
+
+    function addFiles(files, target) {
+        for (let f of files) {
+            if (f.type.startsWith('image/')) {
+                if (target === 'X') xFiles.push(f);
+                else oFiles.push(f);
+            }
+        }
+        updateStatus();
     }
 
+    function updateStatus() {
+        document.getElementById('status').innerText = `대기 중 ➡️ 가맹점: ${affiliateImages.main?'등록':'미등록'} | 텍스트X: ${xFiles.length}개 | 텍스트O: ${oFiles.length}개`;
+    }
+
+    // 파일 일괄 변환 및 단일 Zip 패키징 다운로드
     async function processAll() {
-        if (bulkFiles.length === 0 && !affiliateImages.main) { alert("이미지를 등록해주세요!"); return; }
-        document.getElementById('status').innerText = "⚡ 파일명 완전 최적화 중...";
+        if (xFiles.length === 0 && oFiles.length === 0 && !affiliateImages.main) { 
+            alert("이미지를 한 곳 이상 등록한 후 추출해주세요!"); 
+            return; 
+        }
+        
+        document.getElementById('status').innerText = "⚡ 파일명 최적화 및 전체 빌드 중...";
         const zip = new JSZip();
         document.getElementById('result-container').innerHTML = "";
 
-        // 가맹점
+        // 1. 가맹점 추출 로직
         if (affiliateImages.main) zip.file("n_MO메인.jpg", await renderImage(affiliateImages.main, 208, 208, 'image/jpeg'));
         if (affiliateImages.thumb1) zip.file("n_MO썸네일1.jpg", await renderImage(affiliateImages.thumb1, 218, 146, 'image/jpeg'));
         if (affiliateImages.thumb2) zip.file("n_MO썸네일2.jpg", await renderImage(affiliateImages.thumb2, 218, 146, 'image/jpeg'));
 
-        // 일반 배너 (원본 이름 제거 로직 적용)
-        const specs = {
+        // [텍스트 X] 표준 스펙 세트 (9종)
+        const specsX = {
             square: [
                 { w: 1000, h: 1000, name: '1000_x', type: 'image/jpeg' },
                 { w: 500,  h: 500,  name: 'e_PC배너', type: 'image/png' }
@@ -117,27 +168,59 @@
             ]
         };
 
-        for (const file of bulkFiles) {
+        // 2. [텍스트 X] 배너 일괄 처리 루프
+        for (const file of xFiles) {
             const img = await loadImage(file);
             const ratio = img.width / img.height;
-            const targetSet = ratio > 1.1 ? specs.wide : specs.square;
+            const targetSet = ratio > 1.1 ? specsX.wide : specsX.square;
 
             for (const spec of targetSet) {
                 const blob = await renderImage(img, spec.w, spec.h, spec.type);
-                // 중요: originalName을 제거하고 spec.name으로만 파일명 생성
                 const fName = `${spec.name}.${spec.type === 'image/png' ? 'png' : 'jpg'}`;
                 zip.file(fName, blob);
-                addPreview(blob, fName);
+                addPreview(blob, `[X] ${fName}`);
             }
         }
 
+        // 3. [텍스트 O] 배너 일괄 처리 루프 (_x 제거 완료)
+        for (const file of oFiles) {
+            const img = await loadImage(file);
+            const ratio = img.width / img.height;
+            
+            let targetSpecs = [];
+            // 오리지널 분기 조건(1.2) 유지 및 파일명에서 _x 완전 제거 교정
+            if (ratio > 1.2) {
+                targetSpecs = [
+                    { w: 1200, h: 750, name: '1200' },
+                    { w: 1080, h: 720, name: 'c_rolling_banner' }
+                ];
+            } else {
+                targetSpecs = [
+                    { w: 1000, h: 1000, name: '1000' },
+                    { w: 600,  h: 800,  name: 'y_thumbnail_banner' }
+                ];
+            }
+
+            for (const spec of targetSpecs) {
+                const blob = await renderImage(img, spec.w, spec.h, 'image/jpeg');
+                const fName = `${spec.name}.jpg`;
+                zip.file(fName, blob);
+                addPreview(blob, `[O] ${fName}`);
+            }
+        }
+
+        // 4. 최종 통합 패키지 zip 다운로드 트리거
         const content = await zip.generateAsync({type: "blob"});
         const link = document.createElement('a');
         link.href = URL.createObjectURL(content);
-        link.download = `통합_배너_완전최종.zip`;
+        link.download = `마케팅_통합_전체배너_최종본.zip`;
         link.click();
-        document.getElementById('status').innerText = "✅ 원본 이름 없이 명칭으로만 추출 완료!";
-        bulkFiles = []; 
+        
+        document.getElementById('status').innerText = "✅ 가맹점 및 텍스트 X/O 모든 배너의 파일명이 정정되어 추출되었습니다!";
+        
+        xFiles = [];
+        oFiles = [];
+        updateStatus();
     }
 
     function addPreview(blob, name) {
