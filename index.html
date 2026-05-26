@@ -2,45 +2,114 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>통합 배너 프로그램 (ALL-IN-ONE 파일명 최종 교정본)</title>
+    <title>통합 배너 프로그램 </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Malgun Gothic', sans-serif; background: #1a1a1a; color: #fff; overflow: hidden; }
+        body { 
+            margin: 0; padding: 0; 
+            font-family: 'Malgun Gothic', sans-serif; 
+            background: #1a1a1a; color: #fff; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 100%; 
+            display: flex;
+            flex-direction: column;
+        }
         
         /* 1. 상단 가맹점 헤더 영역 */
         .affiliate-header { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 20px 20px 10px 20px; background: #111; border-bottom: 2px solid #333; }
         .aff-box { display: flex; flex-direction: column; gap: 8px; }
         .aff-drop { height: 110px; border: 2px dashed #444; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #222; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; }
         .aff-drop:hover { border-color: #2ecc71; background: #282828; }
-        .aff-drop img { width: 100%; height: 100%; object-fit: contain; }
+        .aff-drop img { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; }
         .aff-label { font-size: 0.9em; font-weight: bold; color: #2ecc71; text-align: center; }
-        .plus-small { font-size: 24px; color: #444; }
+        .plus-small { font-size: 24px; color: #444; z-index: 1; }
 
-        /* 2. 중앙 메인 드롭존 (X / O 병렬 배치) */
-        .dropzone-container { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 15px 20px; overflow: hidden; }
-        .bulk-drop-box { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px dashed #333; border-radius: 20px; cursor: pointer; transition: all 0.3s; background: #1f1f1f; padding: 20px; text-align: center; }
+        /* 2. 중앙 메인 드롭존 (원본 480px 대형 크기 유지 + 배경 썸네일 효과) */
+        .dropzone-container { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            padding: 15px 20px; 
+        }
+        .bulk-drop-box { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            border: 4px dashed #333; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            background: #1f1f1f; 
+            height: 480px; 
+            text-align: center; 
+            position: relative;
+            overflow: hidden;
+        }
         .bulk-drop-box:hover { border-color: #2ecc71; background: #252525; }
         
-        .main-text { font-size: 1.6em; font-weight: bold; color: #2ecc71; margin-top: 10px; }
-        .sub-text { margin-top: 10px; color: #888; font-size: 1em; line-height: 1.6; }
+        /* 드롭존 내부 가상 배경 이미지 레이어 */
+        .zone-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; opacity: 0.15; /* 글자가 잘 보이도록 배경에 은은하게 15% 투명도로 깔림 */
+            display: none; pointer-events: none;
+        }
+        
+        /* 우측 상단 심플 카운트 배지 */
+        .count-badge {
+            position: absolute; top: 15px; right: 15px;
+            background: #2ecc71; color: #000; font-weight: bold;
+            font-size: 0.85em; padding: 4px 12px; border-radius: 30px;
+            display: none; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        #drop-zone-o .count-badge { background: #3498db; color: #fff; }
+
+        /* 파일이 존재할 때 변경될 실선 테두리 */
+        .bulk-drop-box.has-files-x { border: 4px solid #2ecc71; }
+        .bulk-drop-box.has-files-o { border: 4px solid #3498db; }
+
+        .main-text { font-size: 1.6em; font-weight: bold; color: #2ecc71; margin-top: 10px; z-index: 2; }
+        .sub-text { margin-top: 10px; color: #888; font-size: 1em; line-height: 1.6; z-index: 2; }
         .highlight { color: #2ecc71; font-weight: bold; }
         
         /* 3. 하단 상태 및 결과창 */
-        #status { text-align: center; padding: 8px; font-weight: bold; color: #2ecc71; min-height: 1.2em; font-size: 0.95em; }
-        #result-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 0 20px 10px; overflow-y: auto; max-height: 22vh; background: #151515; border-top: 1px solid #222; }
+        #status { text-align: center; padding: 15px 8px 10px 8px; font-weight: bold; color: #2ecc71; min-height: 1.2em; font-size: 0.95em; }
+        #result-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 0 20px; overflow-y: auto; max-height: 20vh; }
         .preview-item { background: #222; padding: 6px; border-radius: 8px; font-size: 0.7em; text-align: center; border: 1px solid #333; }
         .preview-item img { width: 100%; border-radius: 4px; margin-bottom: 5px; }
         
-        /* 4. 최하단 고정 버튼 */
-        .btn-container { padding: 15px; text-align: center; background: #111; border-top: 1px solid #222; }
-        .action-btn { background: #2ecc71; color: #000; border: none; padding: 12px 60px; font-size: 1.1em; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; }
-        .action-btn:hover { transform: scale(1.03); background: #27ae60; }
+        /* 4. 최하단 고정 버튼 영역 */
+        .btn-container { 
+            padding: 10px 15px 30px 15px; 
+            text-align: center; 
+        }
+        .action-btn { 
+            background: #2ecc71; 
+            color: #000; 
+            border: none; 
+            padding: 14px 80px; 
+            font-size: 1.15em; 
+            font-weight: bold; 
+            border-radius: 50px; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.2); 
+        }
+        .action-btn:hover { transform: scale(1.02); background: #27ae60; }
         
         canvas { display: none; }
     </style>
 </head>
 <body>
 
+<div class="wrapper">
     <div class="affiliate-header">
         <div class="aff-box"><div class="aff-label">n_MO메인 (208x208)</div><div class="aff-drop" onclick="triggerInput('main')" id="drop-main"><span class="plus-small">+</span></div></div>
         <div class="aff-box"><div class="aff-label">n_MO썸네일1 (218x146)</div><div class="aff-drop" onclick="triggerInput('thumb1')" id="drop-thumb1"><span class="plus-small">+</span></div></div>
@@ -49,28 +118,33 @@
 
     <div class="dropzone-container">
         <div id="drop-zone-x" class="bulk-drop-box">
-            <div class="plus-small" style="font-size: 40px;">+</div>
-            <div class="main-text">통합 배너 [텍스트 X]</div>
+            <img id="bg-x" class="zone-bg">
+            <div id="badge-x" class="count-badge">0장 대기중</div>
+            <div class="plus-small" id="plus-icon-x" style="font-size: 40px; color:#2ecc71; z-index:2;">+</div>
+            <div class="main-text">텍스트 X</div>
             <div class="sub-text">
-                <span class="highlight">1000/1200 원본 드롭 (총 9종 규격 추출)</span><br>
-                1000_x, e_PC, 1200_x, y_rolling, cardview, c_rolling, kk_banner, e_모바일, k_rolling
+                <span class="highlight">1000/1200 이미지를 한꺼번에 드롭하세요!</span>
             </div>
         </div>
 
         <div id="drop-zone-o" class="bulk-drop-box">
-            <div class="plus-small" style="font-size: 40px; color: #3498db;">+</div>
-            <div class="main-text" style="color: #3498db;">텍스트 O 버전</div>
+            <img id="bg-o" class="zone-bg">
+            <div id="badge-o" class="count-badge">0장 대기중</div>
+            <div class="plus-small" id="plus-icon-o" style="font-size: 40px; color: #3498db; z-index:2;">+</div>
+            <div class="main-text" style="color: #3498db;">텍스트 O</div>
             <div class="sub-text">
-                <span class="highlight" style="color: #3498db;">1000/1200 이미지를 한꺼번에 드롭하세요!</span><br>
-                1200, c_rolling_banner / 1000, y_thumbnail_banner 추출 (_x 없음)
+                <span class="highlight" style="color: #3498db;">1000/1200 이미지를 한꺼번에 드롭하세요!</span>
             </div>
         </div>
     </div>
 
-    <div id="status">각 드롭존에 이미지 파일을 대기시켜 주세요.</div>
+    <div id="status"></div>
     <div id="result-container"></div>
     
-    <div class="btn-container"><button class="action-btn" onclick="processAll()">모든 파일 통합 패키지 추출</button></div>
+    <div class="btn-container">
+        <button class="action-btn" onclick="processAll()">규격화</button>
+    </div>
+</div>
 
     <input type="file" id="input-main" style="display:none"><input type="file" id="input-thumb1" style="display:none"><input type="file" id="input-thumb2" style="display:none">
     <input type="file" id="input-bulk-x" multiple style="display:none">
@@ -81,12 +155,10 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     
-    // 파일 데이터 저장소 분리
     let xFiles = [];
     let oFiles = [];
     const affiliateImages = { main: null, thumb1: null, thumb2: null };
 
-    // 가맹점 파일 바인딩 로직
     function triggerInput(id) { document.getElementById(`input-${id}`).click(); }
     ['main', 'thumb1', 'thumb2'].forEach(id => {
         const input = document.getElementById(`input-${id}`);
@@ -101,41 +173,67 @@
         if (!file || !file.type.startsWith('image/')) return;
         affiliateImages[id] = await loadImage(file);
         document.getElementById(`drop-${id}`).innerHTML = `<img src="${URL.createObjectURL(file)}">`;
+        updateStatus();
     }
 
-    // [텍스트 X] 드롭존 설정
     const dropX = document.getElementById('drop-zone-x');
     const inputX = document.getElementById('input-bulk-x');
     dropX.onclick = () => inputX.click();
     dropX.ondragover = (e) => { e.preventDefault(); dropX.style.borderColor = '#2ecc71'; };
-    dropX.ondragleave = () => { dropX.style.borderColor = '#333'; };
-    dropX.ondrop = (e) => { e.preventDefault(); dropX.style.borderColor = '#333'; addFiles(e.dataTransfer.files, 'X'); };
+    dropX.ondragleave = () => { if(xFiles.length === 0) dropX.style.borderColor = '#333'; };
+    dropX.ondrop = (e) => { e.preventDefault(); addFiles(e.dataTransfer.files, 'X'); };
     inputX.onchange = (e) => addFiles(e.target.files, 'X');
 
-    // [텍스트 O] 드롭존 설정
     const dropO = document.getElementById('drop-zone-o');
     const inputO = document.getElementById('input-bulk-o');
     dropO.onclick = () => inputO.click();
     dropO.ondragover = (e) => { e.preventDefault(); dropO.style.borderColor = '#3498db'; };
-    dropO.ondragleave = () => { dropO.style.borderColor = '#333'; };
-    dropO.ondrop = (e) => { e.preventDefault(); dropO.style.borderColor = '#333'; addFiles(e.dataTransfer.files, 'O'); };
+    dropO.ondragleave = () => { if(oFiles.length === 0) dropO.style.borderColor = '#333'; };
+    dropO.ondrop = (e) => { e.preventDefault(); addFiles(e.dataTransfer.files, 'O'); };
     inputO.onchange = (e) => addFiles(e.target.files, 'O');
 
     function addFiles(files, target) {
+        let firstImgUrl = null;
         for (let f of files) {
             if (f.type.startsWith('image/')) {
+                if (!firstImgUrl) firstImgUrl = URL.createObjectURL(f);
                 if (target === 'X') xFiles.push(f);
                 else oFiles.push(f);
+            }
+        }
+        
+        if(firstImgUrl) {
+            if(target === 'X') {
+                dropX.classList.add('has-files-x');
+                const bgX = document.getElementById('bg-x');
+                bgX.src = firstImgUrl; bgX.style.display = 'block';
+                const badgeX = document.getElementById('badge-x');
+                badgeX.innerText = ` ${xFiles.length}장 대기중`; badgeX.style.display = 'block';
+                document.getElementById('plus-icon-x').style.display = 'none';
+            } else {
+                dropO.classList.add('has-files-o');
+                const bgO = document.getElementById('bg-o');
+                bgO.src = firstImgUrl; bgO.style.display = 'block';
+                const badgeO = document.getElementById('badge-o');
+                badgeO.innerText = ` ${oFiles.length}장 대기중`; badgeO.style.display = 'block';
+                document.getElementById('plus-icon-o').style.display = 'none';
             }
         }
         updateStatus();
     }
 
-    function updateStatus() {
-        document.getElementById('status').innerText = `대기 중 ➡️ 가맹점: ${affiliateImages.main?'등록':'미등록'} | 텍스트X: ${xFiles.length}개 | 텍스트O: ${oFiles.length}개`;
+    function resetUI() {
+        dropX.classList.remove('has-files-x');
+        document.getElementById('bg-x').style.display = 'none';
+        document.getElementById('badge-x').style.display = 'none';
+        document.getElementById('plus-icon-x').style.display = 'block';
+
+        dropO.classList.remove('has-files-o');
+        document.getElementById('bg-o').style.display = 'none';
+        document.getElementById('badge-o').style.display = 'none';
+        document.getElementById('plus-icon-o').style.display = 'block';
     }
 
-    // 파일 일괄 변환 및 단일 Zip 패키징 다운로드
     async function processAll() {
         if (xFiles.length === 0 && oFiles.length === 0 && !affiliateImages.main) { 
             alert("이미지를 한 곳 이상 등록한 후 추출해주세요!"); 
@@ -146,12 +244,10 @@
         const zip = new JSZip();
         document.getElementById('result-container').innerHTML = "";
 
-        // 1. 가맹점 추출 로직
         if (affiliateImages.main) zip.file("n_MO메인.jpg", await renderImage(affiliateImages.main, 208, 208, 'image/jpeg'));
         if (affiliateImages.thumb1) zip.file("n_MO썸네일1.jpg", await renderImage(affiliateImages.thumb1, 218, 146, 'image/jpeg'));
         if (affiliateImages.thumb2) zip.file("n_MO썸네일2.jpg", await renderImage(affiliateImages.thumb2, 218, 146, 'image/jpeg'));
 
-        // [텍스트 X] 표준 스펙 세트 (9종)
         const specsX = {
             square: [
                 { w: 1000, h: 1000, name: '1000_x', type: 'image/jpeg' },
@@ -168,7 +264,6 @@
             ]
         };
 
-        // 2. [텍스트 X] 배너 일괄 처리 루프
         for (const file of xFiles) {
             const img = await loadImage(file);
             const ratio = img.width / img.height;
@@ -182,13 +277,11 @@
             }
         }
 
-        // 3. [텍스트 O] 배너 일괄 처리 루프 (_x 제거 완료)
         for (const file of oFiles) {
             const img = await loadImage(file);
             const ratio = img.width / img.height;
             
             let targetSpecs = [];
-            // 오리지널 분기 조건(1.2) 유지 및 파일명에서 _x 완전 제거 교정
             if (ratio > 1.2) {
                 targetSpecs = [
                     { w: 1200, h: 750, name: '1200' },
@@ -209,18 +302,15 @@
             }
         }
 
-        // 4. 최종 통합 패키지 zip 다운로드 트리거
         const content = await zip.generateAsync({type: "blob"});
         const link = document.createElement('a');
         link.href = URL.createObjectURL(content);
         link.download = `마케팅_통합_전체배너_최종본.zip`;
         link.click();
         
-        document.getElementById('status').innerText = "✅ 가맹점 및 텍스트 X/O 모든 배너의 파일명이 정정되어 추출되었습니다!";
-        
-        xFiles = [];
-        oFiles = [];
-        updateStatus();
+        document.getElementById('status').innerText = "✅ 작업 완료!";
+        xFiles = []; oFiles = [];
+        resetUI();
     }
 
     function addPreview(blob, name) {
